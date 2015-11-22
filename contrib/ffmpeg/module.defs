@@ -1,9 +1,6 @@
-__deps__ := YASM BZIP2 ZLIB FDKAAC LIBVPX LAME
+__deps__ := YASM BZIP2 ZLIB FDKAAC LIBDCADEC LIBVPX LAME
 ifeq (1,$(FEATURE.qsv))
 __deps__ += PTHREADW32 LIBMFX
-endif
-ifeq (1,$(FEATURE.libdcadec))
-__deps__ += LIBDCADEC
 endif
 
 $(eval $(call import.MODULE.defs,FFMPEG,ffmpeg,$(__deps__)))

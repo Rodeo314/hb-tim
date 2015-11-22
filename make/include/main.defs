@@ -59,6 +59,10 @@ ifeq (1,$(FEATURE.fdk_aac))
     MODULES += contrib/fdk-aac
 endif
 
+ifeq (1,$(FEATURE.libdcadec))
+    MODULES += contrib/libdcadec
+endif
+
 ifeq (1,$(FEATURE.x265))
     MODULES += contrib/x265
 endif
