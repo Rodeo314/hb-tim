@@ -1,0 +1,9 @@
+$(eval $(call import.MODULE.defs,LIBDCADEC,libdcadec))
+$(eval $(call import.CONTRIB.defs,LIBDCADEC))
+
+LIBDCADEC.FETCH.url = https://dl.dropboxusercontent.com/u/37259775/libdcadec.tar.bz2
+LIBDCADEC.CONFIGURE =
+
+## optional static libs need to be marked
+LIBDCADEC.OSL.libs  = dcadec
+LIBDCADEC.OSL.files = $(foreach i,$(LIBDCADEC.OSL.libs),$(call fn.ABSOLUTE,$(CONTRIB.build/)lib/lib$(i).a))

@@ -64,6 +64,10 @@ AC_ARG_ENABLE(fdk-aac,
 	AS_HELP_STRING([--enable-fdk-aac], [enable fdk aac encoder]),
 	use_fdk_aac=yes, use_fdk_aac=no)
 
+AC_ARG_ENABLE(libdcadec,
+	AS_HELP_STRING([--enable-libdcadec], [enable libdcadec decoder]),
+	use_libdcadec=yes, use_libdcadec=no)
+
 AC_ARG_ENABLE(x265,
 	AS_HELP_STRING([--enable-x265], [enable x265 encoder]),
 	use_x265=yes, use_x265=no)
@@ -178,6 +182,10 @@ esac
 
 if test "x$use_fdk_aac" = "xyes" ; then
     HB_LIBS+=" -lfdk-aac"
+fi
+
+if test "x$use_libdcadec" = "xyes" ; then
+    HB_LIBS+=" -ldcadec"
 fi
 
 if test "x$use_x265" = "xyes" ; then

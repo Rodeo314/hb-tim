@@ -1260,6 +1260,10 @@ def createCLI():
     grp.add_option( '--enable-libav-aac', dest="enable_libav_aac", default=not host.match( '*-*-darwin*' ), action='store_true', help=h )
     grp.add_option( '--disable-libav-aac', dest="enable_libav_aac", action='store_false' )
 
+    h = IfHost( 'enable use of libdcadec decoder', '*-*-*', none=optparse.SUPPRESS_HELP ).value
+    grp.add_option( '--enable-libdcadec',  dest="enable_libdcadec", default=False, action='store_true', help=h )
+    grp.add_option( '--disable-libdcadec', dest="enable_libdcadec",                action='store_false' )
+
     cli.add_option_group( grp )
 
     ## add launch options
@@ -1779,6 +1783,7 @@ int main ()
     doc.add( 'FEATURE.gst',        int( not options.disable_gst ))
     doc.add( 'FEATURE.fdk_aac',    int( options.enable_fdk_aac ))
     doc.add( 'FEATURE.libav_aac',  int( options.enable_libav_aac ))
+    doc.add( 'FEATURE.libdcadec',  int( options.enable_libdcadec ))
     doc.add( 'FEATURE.qsv',        int( options.enable_qsv ))
     doc.add( 'FEATURE.hwd',        int( options.enable_hwd ))
     doc.add( 'FEATURE.xcode',      int( not (Tools.xcodebuild.fail or options.disable_xcode or options.cross) ))

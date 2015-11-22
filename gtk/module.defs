@@ -36,6 +36,10 @@ ifeq (1,$(FEATURE.fdk_aac))
 	GTK.CONFIGURE.extra += --enable-fdk-aac
 endif
 
+ifeq (1,$(FEATURE.libdcadec))
+	GTK.CONFIGURE.extra += --enable-libdcadec
+endif
+
 ifeq (1,$(FEATURE.x265))
 	GTK.CONFIGURE.extra += --enable-x265
 endif
