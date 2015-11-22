@@ -1,0 +1,449 @@
+From b7453a41c151e6503f9bc7c0f0626e134a86da0e Mon Sep 17 00:00:00 2001
+From: Tim Walker <tdskywalker@gmail.com>
+Date: Sun, 22 Nov 2015 01:01:34 +0100
+Subject: [PATCH 1/5] lavc: add libdcadec decoder
+
+Signed-off-by: Anton Khirnov <anton@khirnov.net>
+Signed-off-by: Tim Walker <tdskywalker@gmail.com>
+---
+ configure              |   4 +
+ libavcodec/Makefile    |   1 +
+ libavcodec/allcodecs.c |   1 +
+ libavcodec/libdcadec.c | 205 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 211 insertions(+)
+ create mode 100644 libavcodec/libdcadec.c
+
+diff --git a/configure b/configure
+index dd97ddf..b42c8b6 100755
+--- a/configure
++++ b/configure
+@@ -182,6 +182,7 @@ External library support:
+   --enable-libcdio         enable audio CD grabbing with libcdio
+   --enable-libdc1394       enable IIDC-1394 grabbing using libdc1394
+                            and libraw1394 [no]
++  --enable-libdcadec       enable DCA decoding via libdcadec [no]
+   --enable-libfaac         enable AAC encoding via libfaac [no]
+   --enable-libfdk-aac      enable AAC de/encoding via libfdk-aac [no]
+   --enable-libfreetype     enable libfreetype [no]
+@@ -1141,6 +1142,7 @@ EXTERNAL_LIBRARY_LIST="
+     libbs2b
+     libcdio
+     libdc1394
++    libdcadec
+     libfaac
+     libfdk_aac
+     libfontconfig
+@@ -1967,6 +1969,7 @@ mpeg4video_parser_select="error_resilience h263dsp mpeg_er mpegvideo qpeldsp"
+ vc1_parser_select="mpegvideo startcode"
+ 
+ # external libraries
++libdcadec_decoder_deps="libdcadec"
+ libfaac_encoder_deps="libfaac"
+ libfaac_encoder_select="audio_frame_queue"
+ libfdk_aac_decoder_deps="libfdk_aac"
+@@ -4146,6 +4149,7 @@ enabled avisynth          && { { check_header "avisynth/avisynth_c.h" && check_l
+ enabled frei0r            && { check_header frei0r.h || die "ERROR: frei0r.h header not found"; }
+ enabled gnutls            && require_pkg_config gnutls gnutls/gnutls.h gnutls_global_init
+ enabled libbs2b           && require_pkg_config libbs2b bs2b.h bs2b_open
++enabled libdcadec         && require libdcadec libdcadec/dca_context.h dcadec_context_create -ldcadec
+ enabled libfaac           && require2 libfaac "stdint.h faac.h" faacEncGetVersion -lfaac
+ enabled libfdk_aac        && require libfdk_aac fdk-aac/aacenc_lib.h aacEncOpen -lfdk-aac
+ enabled libfontconfig     && require_pkg_config fontconfig "fontconfig/fontconfig.h" FcInit
+diff --git a/libavcodec/Makefile b/libavcodec/Makefile
+index 752340f..4812c10 100644
+--- a/libavcodec/Makefile
++++ b/libavcodec/Makefile
+@@ -596,6 +596,7 @@ OBJS-$(CONFIG_WEBM_MUXER)              += mpeg4audio.o mpegaudiodata.o  \
+ OBJS-$(CONFIG_WTV_DEMUXER)             += mpeg4audio.o mpegaudiodata.o
+ 
+ # external codec libraries
++OBJS-$(CONFIG_LIBDCADEC_DECODER)          += libdcadec.o dca.o
+ OBJS-$(CONFIG_LIBFAAC_ENCODER)            += libfaac.o
+ OBJS-$(CONFIG_LIBFDK_AAC_DECODER)         += libfdk-aacdec.o
+ OBJS-$(CONFIG_LIBFDK_AAC_ENCODER)         += libfdk-aacenc.o
+diff --git a/libavcodec/allcodecs.c b/libavcodec/allcodecs.c
+index 6a71b2c..d2cda41 100644
+--- a/libavcodec/allcodecs.c
++++ b/libavcodec/allcodecs.c
+@@ -434,6 +434,7 @@ void avcodec_register_all(void)
+     REGISTER_ENCDEC (XSUB,              xsub);
+ 
+     /* external libraries */
++    REGISTER_DECODER(LIBDCADEC,         libdcadec)
+     REGISTER_ENCODER(LIBFAAC,           libfaac);
+     REGISTER_ENCDEC (LIBFDK_AAC,        libfdk_aac);
+     REGISTER_ENCDEC (LIBGSM,            libgsm);
+diff --git a/libavcodec/libdcadec.c b/libavcodec/libdcadec.c
+new file mode 100644
+index 0000000..3ab3b1a
+--- /dev/null
++++ b/libavcodec/libdcadec.c
+@@ -0,0 +1,205 @@
++/*
++ * libdcadec decoder wrapper
++ * Copyright (C) 2015 Hendrik Leppkes
++ *
++ * This file is part of Libav.
++ *
++ * Libav is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * Libav is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with Libav; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#include <libdcadec/dca_context.h>
++
++#include "libavutil/channel_layout.h"
++#include "libavutil/common.h"
++#include "libavutil/opt.h"
++
++#include "avcodec.h"
++#include "dca.h"
++#include "dca_syncwords.h"
++#include "internal.h"
++
++typedef struct DCADecContext {
++    struct dcadec_context *ctx;
++    uint8_t *buffer;
++    int buffer_size;
++} DCADecContext;
++
++static int dcadec_decode_frame(AVCodecContext *avctx, void *data,
++                               int *got_frame_ptr, AVPacket *avpkt)
++{
++    DCADecContext *s = avctx->priv_data;
++    AVFrame *frame = data;
++    int ret, i, k;
++    int **samples, nsamples, channel_mask, sample_rate, bits_per_sample, profile;
++    uint32_t mrk;
++    uint8_t *input = avpkt->data;
++    int input_size = avpkt->size;
++
++    /* convert bytestream syntax to RAW BE format if required */
++    if (input_size < 8) {
++        av_log(avctx, AV_LOG_ERROR, "Input size too small\n");
++        return AVERROR_INVALIDDATA;
++    }
++    mrk = AV_RB32(input);
++    if (mrk != DCA_SYNCWORD_CORE_BE && mrk != DCA_SYNCWORD_SUBSTREAM) {
++        s->buffer = av_fast_realloc(s->buffer, &s->buffer_size, avpkt->size + FF_INPUT_BUFFER_PADDING_SIZE);
++        if (!s->buffer)
++            return AVERROR(ENOMEM);
++
++        if ((ret = ff_dca_convert_bitstream(avpkt->data, avpkt->size, s->buffer, s->buffer_size)) < 0)
++            return ret;
++
++        input      = s->buffer;
++        input_size = ret;
++    }
++
++    if ((ret = dcadec_context_parse(s->ctx, input, input_size)) < 0) {
++        av_log(avctx, AV_LOG_ERROR, "dcadec_context_parse() failed: %d (%s)\n", -ret, dcadec_strerror(ret));
++        return AVERROR_UNKNOWN;
++    }
++    if ((ret = dcadec_context_filter(s->ctx, &samples, &nsamples, &channel_mask,
++                                     &sample_rate, &bits_per_sample, &profile)) < 0) {
++        av_log(avctx, AV_LOG_ERROR, "dcadec_context_filter() failed: %d (%s)\n", -ret, dcadec_strerror(ret));
++        return AVERROR_UNKNOWN;
++    }
++
++    avctx->channels       = av_get_channel_layout_nb_channels(channel_mask);
++    avctx->channel_layout = channel_mask;
++    avctx->sample_rate    = sample_rate;
++
++    if (bits_per_sample == 16)
++        avctx->sample_fmt = AV_SAMPLE_FMT_S16P;
++    else if (bits_per_sample <= 24)
++        avctx->sample_fmt = AV_SAMPLE_FMT_S32P;
++    else {
++        av_log(avctx, AV_LOG_ERROR, "Unsupported number of bits per sample: %d\n",
++               bits_per_sample);
++        return AVERROR(ENOSYS);
++    }
++
++    avctx->bits_per_raw_sample = bits_per_sample;
++
++    switch (profile) {
++    case DCADEC_PROFILE_DS:
++        avctx->profile = FF_PROFILE_DTS;
++        break;
++    case DCADEC_PROFILE_DS_96_24:
++        avctx->profile = FF_PROFILE_DTS_96_24;
++        break;
++    case DCADEC_PROFILE_DS_ES:
++        avctx->profile = FF_PROFILE_DTS_ES;
++        break;
++    case DCADEC_PROFILE_HD_HRA:
++        avctx->profile = FF_PROFILE_DTS_HD_HRA;
++        break;
++    case DCADEC_PROFILE_HD_MA:
++        avctx->profile = FF_PROFILE_DTS_HD_MA;
++        break;
++    case DCADEC_PROFILE_EXPRESS:
++        avctx->profile = FF_PROFILE_DTS_EXPRESS;
++        break;
++    case DCADEC_PROFILE_UNKNOWN:
++    default:
++        avctx->profile = FF_PROFILE_UNKNOWN;
++        break;
++    }
++
++    /* bitrate is only meaningful if there are no HD extensions, as they distort the bitrate */
++    if (profile == DCADEC_PROFILE_DS || profile == DCADEC_PROFILE_DS_96_24 || profile == DCADEC_PROFILE_DS_ES) {
++        struct dcadec_core_info *info = dcadec_context_get_core_info(s->ctx);
++        avctx->bit_rate = info->bit_rate;
++        dcadec_context_free_core_info(info);
++    } else
++        avctx->bit_rate = 0;
++
++    frame->nb_samples = nsamples;
++    if ((ret = ff_get_buffer(avctx, frame, 0)) < 0)
++        return ret;
++
++    for (i = 0; i < avctx->channels; i++) {
++        if (frame->format == AV_SAMPLE_FMT_S16P) {
++            int16_t *plane = (int16_t *)frame->extended_data[i];
++            for (k = 0; k < nsamples; k++)
++                plane[k] = samples[i][k];
++        } else {
++            int32_t *plane = (int32_t *)frame->extended_data[i];
++            int shift = 32 - bits_per_sample;
++            for (k = 0; k < nsamples; k++)
++                plane[k] = samples[i][k] << shift;
++        }
++    }
++
++    *got_frame_ptr = 1;
++
++    return avpkt->size;
++}
++
++static av_cold void dcadec_flush(AVCodecContext *avctx)
++{
++    DCADecContext *s = avctx->priv_data;
++    dcadec_context_clear(s->ctx);
++}
++
++static av_cold int dcadec_close(AVCodecContext *avctx)
++{
++    DCADecContext *s = avctx->priv_data;
++
++    dcadec_context_destroy(s->ctx);
++    s->ctx = NULL;
++
++    av_freep(&s->buffer);
++
++    return 0;
++}
++
++static av_cold int dcadec_init(AVCodecContext *avctx)
++{
++    DCADecContext *s = avctx->priv_data;
++
++    s->ctx = dcadec_context_create(0);
++    if (!s->ctx)
++        return AVERROR(ENOMEM);
++
++    avctx->sample_fmt = AV_SAMPLE_FMT_S32P;
++    avctx->bits_per_raw_sample = 24;
++
++    return 0;
++}
++
++static const AVProfile profiles[] = {
++    { FF_PROFILE_DTS,         "DTS"         },
++    { FF_PROFILE_DTS_ES,      "DTS-ES"      },
++    { FF_PROFILE_DTS_96_24,   "DTS 96/24"   },
++    { FF_PROFILE_DTS_HD_HRA,  "DTS-HD HRA"  },
++    { FF_PROFILE_DTS_HD_MA,   "DTS-HD MA"   },
++    { FF_PROFILE_DTS_EXPRESS, "DTS Express" },
++    { FF_PROFILE_UNKNOWN },
++};
++
++AVCodec ff_libdcadec_decoder = {
++    .name           = "libdcadec",
++    .long_name      = NULL_IF_CONFIG_SMALL("dcadec DCA decoder"),
++    .type           = AVMEDIA_TYPE_AUDIO,
++    .id             = AV_CODEC_ID_DTS,
++    .priv_data_size = sizeof(DCADecContext),
++    .init           = dcadec_init,
++    .decode         = dcadec_decode_frame,
++    .close          = dcadec_close,
++    .flush          = dcadec_flush,
++    .capabilities   = CODEC_CAP_DR1 | CODEC_CAP_CHANNEL_CONF,
++    .sample_fmts    = (const enum AVSampleFormat[]) { AV_SAMPLE_FMT_S32P, AV_SAMPLE_FMT_S16P,
++                                                      AV_SAMPLE_FMT_NONE },
++    .profiles       = NULL_IF_CONFIG_SMALL(profiles),
++};
+-- 
+2.4.9 (Apple Git-60)
+
+
+From 6840607e86b8606433df993ab6f20fc1f869ee37 Mon Sep 17 00:00:00 2001
+From: Tim Walker <tdskywalker@gmail.com>
+Date: Sun, 22 Nov 2015 01:10:12 +0100
+Subject: [PATCH 2/5] dca: Move syncword definitions to a separate header
+
+Signed-off-by: Tim Walker <tdskywalker@gmail.com>
+---
+ libavcodec/dca_syncwords.h | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+ create mode 100644 libavcodec/dca_syncwords.h
+
+diff --git a/libavcodec/dca_syncwords.h b/libavcodec/dca_syncwords.h
+new file mode 100644
+index 0000000..5abd480
+--- /dev/null
++++ b/libavcodec/dca_syncwords.h
+@@ -0,0 +1,37 @@
++/*
++ * This file is part of Libav.
++ *
++ * Libav is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * Libav is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with Libav; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
++ */
++
++#ifndef AVCODEC_DCA_SYNCWORDS_H
++#define AVCODEC_DCA_SYNCWORDS_H
++
++enum DCASyncwords {
++    DCA_SYNCWORD_CORE_BE        = 0x7FFE8001,
++    DCA_SYNCWORD_CORE_LE        = 0xFE7F0180,
++    DCA_SYNCWORD_CORE_14B_BE    = 0x1FFFE800,
++    DCA_SYNCWORD_CORE_14B_LE    = 0xFF1F00E8,
++    DCA_SYNCWORD_XCH            = 0x5A5A5A5A,
++    DCA_SYNCWORD_XXCH           = 0x47004A03,
++    DCA_SYNCWORD_X96            = 0x1D95F262,
++    DCA_SYNCWORD_XBR            = 0x655E315E,
++    DCA_SYNCWORD_LBR            = 0x0A801921,
++    DCA_SYNCWORD_XLL            = 0x41A29547,
++    DCA_SYNCWORD_SUBSTREAM      = 0x64582025,
++    DCA_SYNCWORD_SUBSTREAM_CORE = 0x02B09261,
++};
++
++#endif /* AVCODEC_DCA_SYNCWORDS_H */
+-- 
+2.4.9 (Apple Git-60)
+
+
+From 14894627de4e2239086001f2ac91520b632f9318 Mon Sep 17 00:00:00 2001
+From: Tim Walker <tdskywalker@gmail.com>
+Date: Sun, 22 Nov 2015 01:10:56 +0100
+Subject: [PATCH 3/5] dca: Mark syncword constants unsigned; they do not fit in
+ 32-bit signed int
+
+Signed-off-by: Tim Walker <tdskywalker@gmail.com>
+---
+ libavcodec/dca_syncwords.h | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/libavcodec/dca_syncwords.h b/libavcodec/dca_syncwords.h
+index 5abd480..07b60e0 100644
+--- a/libavcodec/dca_syncwords.h
++++ b/libavcodec/dca_syncwords.h
+@@ -20,18 +20,18 @@
+ #define AVCODEC_DCA_SYNCWORDS_H
+ 
+ enum DCASyncwords {
+-    DCA_SYNCWORD_CORE_BE        = 0x7FFE8001,
+-    DCA_SYNCWORD_CORE_LE        = 0xFE7F0180,
+-    DCA_SYNCWORD_CORE_14B_BE    = 0x1FFFE800,
+-    DCA_SYNCWORD_CORE_14B_LE    = 0xFF1F00E8,
+-    DCA_SYNCWORD_XCH            = 0x5A5A5A5A,
+-    DCA_SYNCWORD_XXCH           = 0x47004A03,
+-    DCA_SYNCWORD_X96            = 0x1D95F262,
+-    DCA_SYNCWORD_XBR            = 0x655E315E,
+-    DCA_SYNCWORD_LBR            = 0x0A801921,
+-    DCA_SYNCWORD_XLL            = 0x41A29547,
+-    DCA_SYNCWORD_SUBSTREAM      = 0x64582025,
+-    DCA_SYNCWORD_SUBSTREAM_CORE = 0x02B09261,
++    DCA_SYNCWORD_CORE_BE        = 0x7FFE8001U,
++    DCA_SYNCWORD_CORE_LE        = 0xFE7F0180U,
++    DCA_SYNCWORD_CORE_14B_BE    = 0x1FFFE800U,
++    DCA_SYNCWORD_CORE_14B_LE    = 0xFF1F00E8U,
++    DCA_SYNCWORD_XCH            = 0x5A5A5A5AU,
++    DCA_SYNCWORD_XXCH           = 0x47004A03U,
++    DCA_SYNCWORD_X96            = 0x1D95F262U,
++    DCA_SYNCWORD_XBR            = 0x655E315EU,
++    DCA_SYNCWORD_LBR            = 0x0A801921U,
++    DCA_SYNCWORD_XLL            = 0x41A29547U,
++    DCA_SYNCWORD_SUBSTREAM      = 0x64582025U,
++    DCA_SYNCWORD_SUBSTREAM_CORE = 0x02B09261U,
+ };
+ 
+ #endif /* AVCODEC_DCA_SYNCWORDS_H */
+-- 
+2.4.9 (Apple Git-60)
+
+
+From 2b44b0411470e1b9c950782d03bedd907d60b6d8 Mon Sep 17 00:00:00 2001
+From: Tim Walker <tdskywalker@gmail.com>
+Date: Sun, 22 Nov 2015 01:14:28 +0100
+Subject: [PATCH 4/5] lavc: add profile define for DTS Express
+
+Signed-off-by: Anton Khirnov <anton@khirnov.net>
+Signed-off-by: Tim Walker <tdskywalker@gmail.com>
+---
+ libavcodec/avcodec.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/libavcodec/avcodec.h b/libavcodec/avcodec.h
+index 253e45a..a59f869 100644
+--- a/libavcodec/avcodec.h
++++ b/libavcodec/avcodec.h
+@@ -2639,6 +2639,7 @@ typedef struct AVCodecContext {
+ #define FF_PROFILE_DTS_96_24   40
+ #define FF_PROFILE_DTS_HD_HRA  50
+ #define FF_PROFILE_DTS_HD_MA   60
++#define FF_PROFILE_DTS_EXPRESS 70
+ 
+ #define FF_PROFILE_MPEG2_422    0
+ #define FF_PROFILE_MPEG2_HIGH   1
+-- 
+2.4.9 (Apple Git-60)
+
+
+From 02e120be3c2c1e39076825abc4fe9452b15d65fd Mon Sep 17 00:00:00 2001
+From: Tim Walker <tdskywalker@gmail.com>
+Date: Sun, 22 Nov 2015 01:21:16 +0100
+Subject: [PATCH 5/5] libdcadec: add missing include.
+
+---
+ libavcodec/libdcadec.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/libavcodec/libdcadec.c b/libavcodec/libdcadec.c
+index 3ab3b1a..06130ba 100644
+--- a/libavcodec/libdcadec.c
++++ b/libavcodec/libdcadec.c
+@@ -26,6 +26,7 @@
+ #include "libavutil/opt.h"
+ 
+ #include "avcodec.h"
++#include "bytestream.h"
+ #include "dca.h"
+ #include "dca_syncwords.h"
+ #include "internal.h"
+-- 
+2.4.9 (Apple Git-60)
+
