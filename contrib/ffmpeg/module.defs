@@ -2,6 +2,9 @@ __deps__ := YASM BZIP2 ZLIB FDKAAC LIBVPX LAME
 ifeq (1,$(FEATURE.qsv))
 __deps__ += PTHREADW32 LIBMFX
 endif
+ifeq (1,$(FEATURE.libdcadec))
+__deps__ += LIBDCADEC
+endif
 
 $(eval $(call import.MODULE.defs,FFMPEG,ffmpeg,$(__deps__)))
 $(eval $(call import.CONTRIB.defs,FFMPEG))
@@ -48,6 +51,12 @@ FFMPEG.CONFIGURE.extra += \
     --enable-nonfree \
     --enable-libfdk-aac \
     --enable-encoder=libfdk_aac
+endif
+
+ifeq (1,$(FEATURE.libdcadec))
+FFMPEG.CONFIGURE.extra += \
+    --enable-libdcadec    \
+    --disable-decoder=dca
 endif
 
 FFMPEG.CONFIGURE.extra += \
