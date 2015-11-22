@@ -3,9 +3,11 @@ $(eval $(call import.CONTRIB.defs,LIBDCADEC))
 
 LIBDCADEC.FETCH.url = https://dl.dropboxusercontent.com/u/37259775/libdcadec.tar.bz2
 
-# no configure, just a Makefile
+# no configure, only a Makefile
 LIBDCADEC.CONFIGURE =
-# fixme set $CC, $CFLAGS etc.
+# install in the correct location
+LIBDCADEC.INSTALL.extra = PREFIX=$(LIBDCADEC.CONFIGURE.prefix)
+# TODO cross-compiling
 
 ## optional static libs need to be marked
 LIBDCADEC.OSL.libs  = dcadec
