@@ -96,7 +96,7 @@
         "VideoOptionExtra": "",
         "VideoQualityType": 2,
         "VideoQualitySlider": 20.0,
-        "VideoQSVDecode": false,
+        "VideoQSVDecode": true,
         "VideoQSVAsyncDepth": 4,
         "VideoTwoPass": false,
         "VideoTurboTwoPass": false,
