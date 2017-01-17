@@ -116,29 +116,13 @@ void hb_avcodec_init()
 int hb_avcodec_open(AVCodecContext *avctx, AVCodec *codec,
                     AVDictionary **av_opts, int thread_count)
 {
-    int ret;
-
-    if ((thread_count == HB_FFMPEG_THREADS_AUTO || thread_count > 0) &&
-        (codec->type == AVMEDIA_TYPE_VIDEO))
-    {
-        avctx->thread_count = (thread_count == HB_FFMPEG_THREADS_AUTO) ?
-                               hb_get_cpu_count() / 2 + 1 : thread_count;
-        avctx->thread_type = FF_THREAD_FRAME|FF_THREAD_SLICE;
-        avctx->thread_safe_callbacks = 1;
-    }
-    else
-    {
-        avctx->thread_count = 1;
-    }
-
     if (codec->capabilities & CODEC_CAP_EXPERIMENTAL)
     {
         // "experimental" encoders will not open without this
         avctx->strict_std_compliance = FF_COMPLIANCE_EXPERIMENTAL;
     }
-
-    ret = avcodec_open2(avctx, codec, av_opts);
-    return ret;
+    avctx->thread_count = 1;
+    return avcodec_open2(avctx, codec, av_opts);
 }
 
 int hb_avcodec_close(AVCodecContext *avctx)
