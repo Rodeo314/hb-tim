@@ -1479,6 +1479,35 @@ static void do_job(hb_job_t *job)
     }
 
     /*
+     * TIM314: force ITU PAR in some specific
+     * conditions (due to personal preference)
+     */
+    if (title->geometry.width == 720 && job->width == 704)
+    {
+        switch (job->par.num)
+        {
+            case 64: // 64:45 (PAL, widescreen)
+                job->par.num = 16;
+                job->par.den = 11;
+                break;
+            case 16: // 16:15 (PAL, fullscreen)
+                job->par.num = 12;
+                job->par.den = 11;
+                break;
+            case 32: // 32:27 (NTSC widescreen)
+                job->par.num = 40;
+                job->par.den = 33;
+                break;
+            case 8: //    8:9 (NTSC fullscreen)
+                job->par.num = 10;
+                job->par.den = 11;
+                break;
+            default:
+                break;
+        }
+    }
+
+    /*
      * The frame rate may affect the bitstream's time base, lose superfluous
      * factors for consistency (some encoders reduce fractions, some don't).
      */
