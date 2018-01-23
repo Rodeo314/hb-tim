@@ -513,7 +513,7 @@ static int query_capabilities(mfxSession session, mfxVersion version, hb_qsv_inf
          * suffers from false positives instead. The latter is probably easier
          * and/or safer to sanitize for us, so use mode 1.
          */
-        if (HB_CHECK_MFX_VERSION(version, 1, 6) && info->codec_id == MFX_CODEC_AVC)
+        if (HB_CHECK_MFX_VERSION(version, 1, 6))
         {
             init_video_param(&videoParam);
             videoParam.mfx.CodecId = info->codec_id;
@@ -616,10 +616,15 @@ static int query_capabilities(mfxSession session, mfxVersion version, hb_qsv_inf
                     }
                 }
             }
-            else
+            else if (info->codec_id == MFX_CODEC_AVC)
             {
+                /*
+                 * This should not fail for AVC encoders, so we want to know
+                 * about it - however, it may fail for other encoders (ignore)
+                 */
                 fprintf(stderr,
-                        "hb_qsv_info_init: mfxExtCodingOption2 check failed (0x%"PRIX32", 0x%"PRIX32", %d)\n",
+                        "hb_qsv_info_init: mfxExtCodingOption2 check"
+                        " failed (0x%"PRIX32", 0x%"PRIX32", %d)\n",
                         info->codec_id, info->implementation, status);
             }
         }
