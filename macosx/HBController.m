@@ -30,6 +30,7 @@
 
 #import "HBPresetsViewController.h"
 #import "HBAddPresetController.h"
+#import "HBRenamePresetController.h"
 
 @import HandBrakeKit;
 
@@ -1502,6 +1503,27 @@
     return [preset copy];
 }
 
+- (IBAction)showRenamePresetPanel:(id)sender
+{
+    [self.window HB_endEditing];
+
+    HBRenamePresetController *renamePresetController = [[HBRenamePresetController alloc] initWithPreset:self.currentPreset
+                                                                                          presetManager:presetManager];
+
+    [NSApp beginSheet:renamePresetController.window modalForWindow:self.window modalDelegate:self didEndSelector:@selector(renamePresetSheetDidEnd:returnCode:contextInfo:) contextInfo:(void *)CFBridgingRetain(renamePresetController)];
+}
+
+- (void)renamePresetSheetDidEnd:(NSWindow *)sheet returnCode:(NSInteger)returnCode contextInfo:(void *)contextInfo
+{
+    //__unused HBRenamePresetController *renamePresetController = (HBRenamePresetController *)CFBridgingRelease(contextInfo);
+    HBRenamePresetController *renamePresetController = (HBRenamePresetController *)CFBridgingRelease(contextInfo);
+
+    if (returnCode == NSModalResponseOK)
+    {
+        //
+    }
+}
+
 #pragma mark -
 #pragma mark Import Export Preset(s)
 
@@ -1528,6 +1550,12 @@
 {
     fPresetsView.selectedPreset = _currentPreset;
     [fPresetsView setDefault:sender];
+}
+
+- (IBAction)renamePreset:(id)sender
+{
+    fPresetsView.selectedPreset = _currentPreset;
+    [self showRenamePresetPanel:sender];
 }
 
 - (IBAction)deletePreset:(id)sender
