@@ -270,6 +270,8 @@ typedef NS_ENUM(NSUInteger, HBPresetLoadingResult) {
     [self savePresets];
 }
 
+///fixme rename preset method
+
 - (void)deletePresetAtIndexPath:(NSIndexPath *)idx
 {
     [self.root removeObjectAtIndexPath:idx];

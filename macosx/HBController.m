@@ -1523,12 +1523,6 @@
 - (void)renamePresetSheetDidEnd:(NSWindow *)sheet returnCode:(NSInteger)returnCode contextInfo:(void *)contextInfo
 {
     __unused HBRenamePresetController *renamePresetController = (HBRenamePresetController *)CFBridgingRelease(contextInfo);
-//    HBRenamePresetController *renamePresetController = (HBRenamePresetController *)CFBridgingRelease(contextInfo);
-
-    if (returnCode == NSModalResponseOK)
-    {
-        //
-    }
 }
 
 #pragma mark -
