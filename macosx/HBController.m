@@ -504,10 +504,6 @@
     {
         return self.job && self.window.attachedSheet == nil;
     }
-    if (action == @selector(selectDefaultPreset:))
-    {
-        return self.window.attachedSheet == nil;
-    }
     if (action == @selector(pause:))
     {
         return [fQueueController validateMenuItem:menuItem];
@@ -550,7 +546,18 @@
     }
     if (action == @selector(exportPreset:))
     {
-        return [fPresetsView validateUserInterfaceItem:menuItem];
+        return [fPresetsView validateUserInterfaceItem:menuItem] && self.job != nil;
+    }
+    if (action == @selector(selectDefaultPreset:) ||//fixme implement in fPresetsView???
+        action == @selector(insertCategory:))
+    {
+	return self.job != nil;
+    }
+    if (action == @selector(renamePreset:) ||
+        action == @selector(deletePreset:) ||
+        action == @selector(setDefaultPreset:))
+    {
+        return self.job != nil && self.edited == NO;//fixme
     }
 
     return YES;
@@ -1507,7 +1514,7 @@
 {
     [self.window HB_endEditing];
 
-    HBRenamePresetController *renamePresetController = [[HBRenamePresetController alloc] initWithPreset:_currentPreset//fixme modified???
+    HBRenamePresetController *renamePresetController = [[HBRenamePresetController alloc] initWithPreset:_currentPreset//fixme
                                                                                           presetManager:presetManager];
 
     [NSApp beginSheet:renamePresetController.window modalForWindow:self.window modalDelegate:self didEndSelector:@selector(renamePresetSheetDidEnd:returnCode:contextInfo:) contextInfo:(void *)CFBridgingRetain(renamePresetController)];

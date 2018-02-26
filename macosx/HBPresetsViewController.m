@@ -249,7 +249,7 @@ static void *HBPresetsViewControllerContext = &HBPresetsViewControllerContext;
     }
 }
 
-- (IBAction)renamed:(id)sender
+- (IBAction)renamed:(id)sender//fixme this is what we should eventually do???
 {
     if (self.delegate && [[self.treeController.selectedObjects firstObject] isLeaf])
     {
