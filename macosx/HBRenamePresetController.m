@@ -17,8 +17,6 @@
 @property (nonatomic, strong) IBOutlet NSButton *renameButton;
 
 @property (nonatomic, strong) HBPreset *preset;
-@property (nonatomic, strong) HBMutablePreset *mutablePreset;
-
 @property (nonatomic, strong) HBPresetsManager *manager;
 
 @end
@@ -31,8 +29,8 @@
     if (self)
     {
         NSParameterAssert(preset);
+        NSParameterAssert(manager);
         _preset = preset;
-        _mutablePreset = [preset mutableCopy];
         _manager = manager;
     }
     return self;
@@ -75,9 +73,7 @@
     }
     else
     {
-        HBMutablePreset *renamedPreset = self.mutablePreset;
-        renamedPreset.name = self.name.stringValue;
-        self.preset = [renamedPreset copy];
+        [self.preset setName:self.name.stringValue];
 
         [self.window orderOut:nil];
         [NSApp endSheet:self.window returnCode:NSModalResponseContinue];

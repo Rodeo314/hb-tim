@@ -495,7 +495,7 @@
     return YES;
 }
 
-- (BOOL)validateMenuItem:(NSMenuItem *)menuItem
+- (BOOL)validateMenuItem:(NSMenuItem *)menuItem//fixme maybe stuff to be done here?
 {
     SEL action = menuItem.action;
 
@@ -1507,7 +1507,7 @@
 {
     [self.window HB_endEditing];
 
-    HBRenamePresetController *renamePresetController = [[HBRenamePresetController alloc] initWithPreset:self.currentPreset
+    HBRenamePresetController *renamePresetController = [[HBRenamePresetController alloc] initWithPreset:_currentPreset//fixme modified???
                                                                                           presetManager:presetManager];
 
     [NSApp beginSheet:renamePresetController.window modalForWindow:self.window modalDelegate:self didEndSelector:@selector(renamePresetSheetDidEnd:returnCode:contextInfo:) contextInfo:(void *)CFBridgingRetain(renamePresetController)];
@@ -1515,8 +1515,8 @@
 
 - (void)renamePresetSheetDidEnd:(NSWindow *)sheet returnCode:(NSInteger)returnCode contextInfo:(void *)contextInfo
 {
-    //__unused HBRenamePresetController *renamePresetController = (HBRenamePresetController *)CFBridgingRelease(contextInfo);
-    HBRenamePresetController *renamePresetController = (HBRenamePresetController *)CFBridgingRelease(contextInfo);
+    __unused HBRenamePresetController *renamePresetController = (HBRenamePresetController *)CFBridgingRelease(contextInfo);
+//    HBRenamePresetController *renamePresetController = (HBRenamePresetController *)CFBridgingRelease(contextInfo);
 
     if (returnCode == NSModalResponseOK)
     {
