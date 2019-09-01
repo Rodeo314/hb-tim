@@ -484,6 +484,36 @@
         hb_value_free(&filter_dict);
     }
 
+    // XXXX: manually set "ITU" PAR
+    // TODO: move to libhb eventually
+    if (title->geometry.width == 720 && self.picture.width == 704)
+    {
+        if (self.picture.parWidth == 32 &&
+            self.picture.parHeight == 27)
+        {
+            job->par.num = 40;
+            job->par.den = 33;
+        }
+        if (self.picture.parWidth == 8 &&
+            self.picture.parHeight == 9)
+        {
+            job->par.num = 10;
+            job->par.den = 11;
+        }
+        if (self.picture.parWidth == 64 &&
+            self.picture.parHeight == 45)
+        {
+            job->par.num = 16;
+            job->par.den = 11;
+        }
+        if (self.picture.parWidth == 16 &&
+            self.picture.parHeight == 15)
+        {
+            job->par.num = 12;
+            job->par.den = 11;
+        }
+    }
+
     // Add Crop/Scale filter
     filter = hb_filter_init(HB_FILTER_CROP_SCALE);
     hb_add_filter( job, filter,
