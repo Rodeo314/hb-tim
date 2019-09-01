@@ -273,6 +273,8 @@ fail:
 
         _hb_title = title;
         _hb_handle = handle;
+        // if the main feature is under 1 hour, default to title 1
+        if (title->duration >= (3600LL * 90000LL))
         _featured = featured;
 
         _metadata = [[HBMetadata alloc] initWithMetadata:title->metadata];
