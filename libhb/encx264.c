@@ -393,6 +393,9 @@ int encx264Init( hb_work_object_t * w, hb_job_t * job )
     param.vui.i_transfer  = hb_output_color_transfer(job);
     param.vui.i_colmatrix = hb_output_color_matrix(job);
 
+    /* disable threaded lookahead by default in this build */
+    param.i_lookahead_threads = 1;
+
     /* place job->encoder_options in an hb_dict_t for convenience */
     hb_dict_t * x264_opts = NULL;
     if (job->encoder_options != NULL && *job->encoder_options)

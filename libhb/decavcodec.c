@@ -119,7 +119,6 @@ struct hb_work_private_s
     AVCodecParserContext * parser;
     AVFrame              * frame;
     hb_buffer_t          * palette;
-    int                    threads;
     int                    video_codec_opened;
     hb_buffer_list_t       list;
     double                 duration;        // frame duration (for video)
@@ -681,7 +680,7 @@ static int decavcodecaBSInfo( hb_work_object_t *w, const hb_buffer_t *buf,
 
     AVDictionary * av_opts = NULL;
     av_dict_set( &av_opts, "err_detect", "crccheck+explode", 0 );
-    if ( hb_avcodec_open( context, codec, &av_opts, 0 ) )
+    if (hb_avcodec_open( context, codec, &av_opts, 0))
     {
         av_dict_free( &av_opts );
         return -1;
@@ -1441,11 +1440,6 @@ static int decavcodecvInit( hb_work_object_t * w, hb_job_t * job )
     }
 #endif
 
-    if( pv->job && pv->job->title && !pv->job->title->has_resolution_change )
-    {
-        pv->threads = HB_FFMPEG_THREADS_AUTO;
-    }
-
 #if HB_PROJECT_FEATURE_QSV
     if (pv->qsv.decode)
     {
@@ -1500,7 +1494,7 @@ static int decavcodecvInit( hb_work_object_t * w, hb_job_t * job )
         }
 #endif
 
-        if ( hb_avcodec_open( pv->context, pv->codec, &av_opts, pv->threads ) )
+        if (hb_avcodec_open(pv->context, pv->codec, &av_opts, 0))
         {
             av_dict_free( &av_opts );
             hb_log( "decavcodecvInit: avcodec_open failed" );
@@ -1627,7 +1621,7 @@ static int decodePacket( hb_work_object_t * w )
         }
 
         // disable threaded decoding for scan, can cause crashes
-        if ( hb_avcodec_open( pv->context, pv->codec, &av_opts, pv->threads ) )
+        if (hb_avcodec_open(pv->context, pv->codec, &av_opts, 0))
         {
             av_dict_free( &av_opts );
             hb_log( "decavcodecvWork: avcodec_open failed" );
