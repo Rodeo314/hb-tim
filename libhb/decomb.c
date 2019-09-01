@@ -1226,7 +1226,7 @@ static void process_frame( hb_filter_private_t * pv )
         int tff;
         if (pv->parity < 0)
         {
-            tff = !!(pv->ref[1]->s.flags & PIC_FLAG_TOP_FIELD_FIRST);
+            tff = !!(pv->ref[1]->s.flags & (PIC_FLAG_TOP_FIELD_FIRST|PIC_FLAG_PROGRESSIVE_FRAME));
         }
         else
         {

@@ -36,7 +36,7 @@ void hb_video_buffer_to_avframe(AVFrame *frame, hb_buffer_t * buf)
     frame->height           = buf->f.height;
     frame->format           = buf->f.fmt;
     frame->interlaced_frame = !!buf->s.combed;
-    frame->top_field_first  = !!(buf->s.flags & PIC_FLAG_TOP_FIELD_FIRST);
+    frame->top_field_first  = !!(buf->s.flags & (PIC_FLAG_TOP_FIELD_FIRST|PIC_FLAG_PROGRESSIVE_FRAME));
 
     frame->format          = buf->f.fmt;
     frame->color_primaries = hb_colr_pri_hb_to_ff(buf->f.color_prim);

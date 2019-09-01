@@ -941,7 +941,7 @@ static int hb_detelecine_work( hb_filter_object_t * filter,
     /* Submit buffer fields based on buffer flags.
        Detelecine assumes BFF when the TFF flag isn't present. */
     int parity = 1;
-    if( in->s.flags & PIC_FLAG_TOP_FIELD_FIRST )
+    if (!!(in->s.flags & (PIC_FLAG_TOP_FIELD_FIRST|PIC_FLAG_PROGRESSIVE_FRAME)))
     {
         /* Source signals TFF */
         parity = 0;
