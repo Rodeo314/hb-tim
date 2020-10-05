@@ -1948,10 +1948,10 @@ int hb_qsv_param_default(hb_qsv_param_t *param, mfxVideoParam *videoParam,
         // {
         //     param->videoParam->ExtParam[param->videoParam->NumExtParam++] = (mfxExtBuffer*)&param->videoSignalInfo;
         // }
-        if (info->capabilities & HB_QSV_CAP_OPTION1)
-        {
-            param->videoParam->ExtParam[param->videoParam->NumExtParam++] = (mfxExtBuffer*)&param->codingOption;
-        }
+        // if (info->capabilities & HB_QSV_CAP_OPTION1)
+        // {
+        //     param->videoParam->ExtParam[param->videoParam->NumExtParam++] = (mfxExtBuffer*)&param->codingOption;
+        // }
         // if (info->capabilities & HB_QSV_CAP_OPTION2)
         // {
         //     param->videoParam->ExtParam[param->videoParam->NumExtParam++] = (mfxExtBuffer*)&param->codingOption2;
