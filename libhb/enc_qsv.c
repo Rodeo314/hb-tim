@@ -1100,7 +1100,7 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
     // some encoding parameters are used by filters to configure their output
     switch (pv->qsv_info->codec_id)
     {
-        case MFX_CODEC_HEVC:
+        case MFX_CODEC_HEVC://fixme: does 32 always suffice?
             job->qsv.enc_info.align_width  = HB_QSV_ALIGN32(job->width);
             job->qsv.enc_info.align_height = HB_QSV_ALIGN32(job->height);
             break;
