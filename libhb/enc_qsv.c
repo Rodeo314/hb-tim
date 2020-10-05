@@ -1101,8 +1101,10 @@ int encqsvInit(hb_work_object_t *w, hb_job_t *job)
     switch (pv->qsv_info->codec_id)
     {
         case MFX_CODEC_HEVC://fixme: does 32 always suffice?
-            job->qsv.enc_info.align_width  = HB_QSV_ALIGN32(job->width);
-            job->qsv.enc_info.align_height = HB_QSV_ALIGN32(job->height);
+            // job->qsv.enc_info.align_width  = HB_QSV_ALIGN32(job->width);
+            // job->qsv.enc_info.align_height = HB_QSV_ALIGN32(job->height);
+            job->qsv.enc_info.align_width  = HB_QSV_ALIGN64(job->width);
+            job->qsv.enc_info.align_height = HB_QSV_ALIGN64(job->height);
             break;
 
         case MFX_CODEC_AVC:

@@ -140,6 +140,7 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define hb_qsv_sleep(x) av_usleep((x)*1000)
 
 #define HB_QSV_ZERO_MEMORY(VAR)                    {memset(&VAR, 0, sizeof(VAR));}
+#define HB_QSV_ALIGN64(X)                      (((mfxU32)((X)+63)) & (~ (mfxU32)63))
 #define HB_QSV_ALIGN32(X)                      (((mfxU32)((X)+31)) & (~ (mfxU32)31))
 #define HB_QSV_ALIGN16(value)                  (((value + 15) >> 4) << 4)
 #ifndef HB_QSV_PRINT_RET_MSG
