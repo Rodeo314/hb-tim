@@ -1962,6 +1962,7 @@ int hb_qsv_param_default(hb_qsv_param_t *param, mfxVideoParam *videoParam,
         hb_error("hb_qsv_param_default: invalid pointer(s)");
         return -1;
     }
+    hb_log("ycbhmdsnctz");//fixme
     return 0;
 }
 
